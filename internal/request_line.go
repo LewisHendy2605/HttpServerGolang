@@ -8,6 +8,9 @@ type RequestLine struct {
 	HttpVersion string
 }
 
+type HttpVersion struct {
+}
+
 func ParseRequestLine(request_line string) (RequestLine, error) {
 	parts := strings.Split(request_line, " ")
 
@@ -17,3 +20,12 @@ func ParseRequestLine(request_line string) (RequestLine, error) {
 		HttpVersion: parts[2],
 	}, nil
 }
+
+// Parse http version from start line
+// HTTP-version  = HTTP-name "/" DIGIT "." DIGIT
+// HTTP-name     = %s"HTTP
+/*
+func ParseHttpVersion(http_version string) (HttpVersion, error) {
+	parts :=
+}
+*/
