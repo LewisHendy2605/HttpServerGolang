@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"net"
 )
 
@@ -28,21 +27,23 @@ func StartServer() {
 func HandleConn(conn net.Conn, ctx context.Context) {
 	buffer := make([]byte, 2)
 	message := make([]byte, 1057)
+	numBytes := 0
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			_, err := conn.Read(buffer)
+			bytes_read, err := conn.Read(buffer)
 			if err != nil {
 				panic(err)
 			}
 
 			if !bytes.Contains(buffer, CRLF) {
 				message = append(message, buffer...)
+				numBytes += bytes_read
 			} else {
-				fmt.Printf("Parse Line: %s\n", string(message))
+				ParseRequestLine(message)
 				message = message[:0]
 			}
 		}

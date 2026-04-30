@@ -1,24 +1,32 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 )
 
 func TestParseRequestLine(t *testing.T) {
-	method := "GET"
-	uri := "http://www.w3.org/pub/WWW/TheProject.html"
-	version := "HTTP/1.1"
+	method := []byte("GET")
+	uri := []byte("http://www.w3.org/pub/WWW/TheProject.html")
+	major := []byte("1")
+	minor := []byte("1")
+	version := fmt.Appendf(nil, "HTTP/%s.%s", major, minor)
 
-	requestLine, _ := ParseRequestLine(fmt.Sprintf("%s %s %s", method, uri, version))
+	requestLine := fmt.Appendf(nil, "%s %s %s", method, uri, version)
 
-	if requestLine.Method != method {
-		t.Fatalf("unexpected http method. expected: %s, got %s", method, requestLine.Method)
+	parsed := ParseRequestLine(requestLine)
+
+	if !bytes.Equal(parsed.Method, method) {
+		t.Fatalf("unexpected http method. expected: %s, got %s", method, parsed.Method)
 	}
-	if requestLine.RequestUri != uri {
-		t.Fatalf("unexpected http method. expected: %s, got %s", uri, requestLine.RequestUri)
+	if !bytes.Equal(parsed.RequestTarget, uri) {
+		t.Fatalf("unexpected http method. expected: %s, got %s", uri, parsed.RequestTarget)
 	}
-	if requestLine.HttpVersion != version {
-		t.Fatalf("unexpected http method. expected: %s, got %s", version, requestLine.HttpVersion)
+	if !bytes.Equal(parsed.HttpVersion.Major, major) {
+		t.Fatalf("unexpected http method. expected: %s, got %v", major, parsed.HttpVersion.Major)
+	}
+	if !bytes.Equal(parsed.HttpVersion.Minor, minor) {
+		t.Fatalf("unexpected http method. expected: %s, got %v", minor, parsed.HttpVersion.Minor)
 	}
 }
