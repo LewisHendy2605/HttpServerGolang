@@ -10,6 +10,12 @@ type HttpVersionTestTable struct {
 	wantErr bool
 }
 
+type HttpMethodTestTable struct {
+	name  string
+	input HttpMethod
+	valid bool
+}
+
 func TestParseHttpVersion(t *testing.T) {
 	tests := []HttpVersionTestTable{
 		{name: "valid", input: []byte("HTTP/1.1"), wantErr: false},
@@ -36,6 +42,7 @@ func TestParseRequestLine(t *testing.T) {
 		{name: "missing method", input: []byte("http://www.w3.org/pub/WWW/TheProject.html HTTP/1.1"), wantErr: true},
 		{name: "missing uri", input: []byte("GET HTTP/1.1"), wantErr: true},
 		{name: "missing version", input: []byte("GET http://www.w3.org/pub/WWW/TheProject.html"), wantErr: true},
+		{name: "invalid method", input: []byte("TEST http://www.w3.org/pub/WWW/TheProject.html HTTP/1.1"), wantErr: true},
 	}
 
 	for _, tt := range tests {
@@ -46,7 +53,30 @@ func TestParseRequestLine(t *testing.T) {
 			}
 		})
 	}
+}
 
+func TestIsValidHttpMethod(t *testing.T) {
+	tests := []HttpMethodTestTable{
+		{name: "valid", input: HttpMethod("GET"), valid: true},
+		{name: "valid", input: HttpMethod("POST"), valid: true},
+		{name: "valid", input: HttpMethod("PUT"), valid: true},
+		{name: "valid", input: HttpMethod("PATCH"), valid: true},
+		{name: "valid", input: HttpMethod("DELETE"), valid: true},
+		{name: "valid", input: HttpMethod("Get"), valid: false},
+		{name: "valid", input: HttpMethod("get"), valid: false},
+		{name: "missing method", input: HttpMethod("GETT"), valid: false},
+		{name: "missing uri", input: HttpMethod("TEST"), valid: false},
+		{name: "missing uri", input: HttpMethod(""), valid: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			valid := IsValidHttpMethod(tt.input)
+			if (valid) != tt.valid {
+				t.Fatalf("got: %v, expected: %v", valid, tt.valid)
+			}
+		})
+	}
 }
 
 func TestParseFieldLine(t *testing.T) {

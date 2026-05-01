@@ -6,6 +6,13 @@ import (
 )
 
 /*
+Resources:
+	RFC_9112  : https://datatracker.ietf.org/doc/html/rfc9112
+	RFC: 9110 : https://www.rfc-editor.org/rfc/rfc9110
+	RFC_5789  : https://www.rfc-editor.org/rfc/rfc5789.html
+*/
+
+/*
 1.2. Syntax Notation
 
 This specification uses the Augmented Backus-Naur Form (ABNF) notation of [RFC5234], extended with the notation for case-sensitivity in strings defined in [RFC7405].
@@ -18,6 +25,7 @@ As a convention, ABNF rule names prefixed with "obs-" denote obsolete grammar ru
 
 The following core rules are included by reference, as defined in [RFC5234],
 Appendix B.1: ALPHA (letters),
+
 	CR (carriage return),
 	CRLF (CR LF),
 	CTL (controls),
@@ -31,25 +39,25 @@ Appendix B.1: ALPHA (letters),
 
 The rules below are defined in [HTTP]:
 
-  BWS           = <BWS, see [HTTP], Section 5.6.3>
-  OWS           = <OWS, see [HTTP], Section 5.6.3>
-  RWS           = <RWS, see [HTTP], Section 5.6.3>
-  absolute-path = <absolute-path, see [HTTP], Section 4.1>
-  field-name    = <field-name, see [HTTP], Section 5.1>
-  field-value   = <field-value, see [HTTP], Section 5.5>
-  obs-text      = <obs-text, see [HTTP], Section 5.6.4>
-  quoted-string = <quoted-string, see [HTTP], Section 5.6.4>
-  token         = <token, see [HTTP], Section 5.6.2>
-  transfer-coding =
-                  <transfer-coding, see [HTTP], Section 10.1.4>
+	BWS           = <BWS, see [HTTP], Section 5.6.3>
+	OWS           = <OWS, see [HTTP], Section 5.6.3>
+	RWS           = <RWS, see [HTTP], Section 5.6.3>
+	absolute-path = <absolute-path, see [HTTP], Section 4.1>
+	field-name    = <field-name, see [HTTP], Section 5.1>
+	field-value   = <field-value, see [HTTP], Section 5.5>
+	obs-text      = <obs-text, see [HTTP], Section 5.6.4>
+	quoted-string = <quoted-string, see [HTTP], Section 5.6.4>
+	token         = <token, see [HTTP], Section 5.6.2>
+	transfer-coding =
+	                <transfer-coding, see [HTTP], Section 10.1.4>
 
 The rules below are defined in [URI]:
 
-  absolute-URI  = <absolute-URI, see [URI], Section 4.3>
-  authority     = <authority, see [URI], Section 3.2>
-  uri-host      = <host, see [URI], Section 3.2.2>
-  port          = <port, see [URI], Section 3.2.3>
-  query         = <query, see [URI], Section 3.4>
+	absolute-URI  = <absolute-URI, see [URI], Section 4.3>
+	authority     = <authority, see [URI], Section 3.2>
+	uri-host      = <host, see [URI], Section 3.2.2>
+	port          = <port, see [URI], Section 3.2.3>
+	query         = <query, see [URI], Section 3.4>
 */
 var SP = []byte(" ")
 var CR = []byte("\r")
@@ -69,17 +77,17 @@ format similar to the Internet Message Format [RFC5322]: zero or more header fie
 (collectively referred to as the "headers" or the "header section"),
 an empty line indicating the end of the header section, and an optional message body.
 
-  HTTP-message   = start-line CRLF
-                   *( field-line CRLF )
-                   CRLF
-                   [ message-body ]
+	HTTP-message   = start-line CRLF
+	                 *( field-line CRLF )
+	                 CRLF
+	                 [ message-body ]
 
 A message can be either a request from client to server or a response from server to client.
 Syntactically, the two types of messages differ only in the start-line,
 which is either a request-line (for requests) or a status-line (for responses),
 and in the algorithm for determining the length of the message body (Section 6).
 
-  start-line     = request-line / status-line
+	start-line     = request-line / status-line
 
 In theory, a client could receive requests and a server could receive responses,
 distinguishing them by their different start-line formats.
@@ -89,14 +97,20 @@ and clients are implemented to only expect a response.
 
 HTTP makes use of some protocol elements similar to the Multipurpose Internet Mail Extensions (MIME) [RFC2045].
 */
-type HttpMessage struct {
+type HttpRequest struct {
 	RequestLine *RequestLine
 	FieldLines  []*FieldLine
 	MessageBody []byte
 }
 
-// Parse a http message
-func ParseHttpMessage(http_message []byte) (*HttpMessage, error) {
+type HttpResponse struct {
+	StatusLine  *StatusLine
+	FieldLines  []*FieldLine
+	MessageBody []byte
+}
+
+// Parses a http request
+func ParseHttpRequest(http_message []byte) (*HttpRequest, error) {
 	parts := bytes.SplitN(http_message, CRLF, 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid http message: missing crlf")
@@ -125,8 +139,45 @@ func ParseHttpMessage(http_message []byte) (*HttpMessage, error) {
 		}
 	}
 
-	return &HttpMessage{
+	return &HttpRequest{
 		RequestLine: request_line,
+		FieldLines:  field_lines,
+		MessageBody: message_body,
+	}, nil
+}
+
+// Parses a http response
+func ParseHttpResponse(http_message []byte) (*HttpResponse, error) {
+	parts := bytes.SplitN(http_message, CRLF, 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid http message: missing crlf")
+	}
+
+	// 'In practice, servers are implemented to only expect a request'
+	status_line, err := ParseStatusLine(parts[0])
+	if err != nil {
+		return nil, err
+	}
+
+	var message_body []byte
+	var field_lines []*FieldLine
+
+	lines := bytes.Split(parts[1], CRLF)
+
+	for i, line := range lines {
+		if bytes.Equal(line, CRLF) {
+			message_body = bytes.Join(lines[i:], CRLF)
+		} else {
+			fl, err := ParseFieldLine(line)
+			if err != nil {
+				return nil, err
+			}
+			field_lines = append(field_lines, fl)
+		}
+	}
+
+	return &HttpResponse{
+		StatusLine:  status_line,
 		FieldLines:  field_lines,
 		MessageBody: message_body,
 	}, nil
@@ -200,8 +251,8 @@ This specification defines version "1.1". Section 2.5 of [HTTP] specifies the se
 The version of an HTTP/1.x message is indicated by an HTTP-version field in the start-line.
 HTTP-version is case-sensitive.
 
-  HTTP-version  = HTTP-name "/" DIGIT "." DIGIT
-  HTTP-name     = %s"HTTP"
+	HTTP-version  = HTTP-name "/" DIGIT "." DIGIT
+	HTTP-name     = %s"HTTP"
 */
 type HttpVersion struct {
 	Name  []byte
@@ -231,7 +282,7 @@ func ParseHttpVersion(http_version []byte) (*HttpVersion, error) {
 		return nil, fmt.Errorf("invalid http version, missing major")
 	}
 
-	minor := version[0]
+	minor := version[1]
 	if len(minor) == 0 {
 		return nil, fmt.Errorf("invalid http version, missing minor")
 	}
@@ -253,7 +304,7 @@ and another single space (SP), and ends with the protocol version.
 request-line   = method SP request-target SP HTTP-version
 */
 type RequestLine struct {
-	Method        []byte
+	Method        HttpMethod
 	RequestTarget []byte
 	HttpVersion   *HttpVersion
 }
@@ -261,6 +312,17 @@ type RequestLine struct {
 // Parses http request line
 func ParseRequestLine(request_line []byte) (*RequestLine, error) {
 	parts := bytes.Split(request_line, SP)
+	if len(parts) != 3 {
+		return nil, fmt.Errorf("invalid request line, missing space")
+	}
+
+	method := HttpMethod(string(bytes.ToUpper(parts[0])))
+	if !IsValidHttpMethod(method) {
+		return nil, fmt.Errorf("invalid request line, invalid http method")
+	}
+
+	// TODO: Validate
+	request_target := parts[1]
 
 	http_version, err := ParseHttpVersion(parts[2])
 	if err != nil {
@@ -268,8 +330,8 @@ func ParseRequestLine(request_line []byte) (*RequestLine, error) {
 	}
 
 	return &RequestLine{
-		Method:        parts[0],
-		RequestTarget: parts[1],
+		Method:        method,
+		RequestTarget: request_target,
 		HttpVersion:   http_version,
 	}, nil
 }
@@ -280,18 +342,40 @@ func ParseRequestLine(request_line []byte) (*RequestLine, error) {
 The method token indicates the request method to be performed on the target resource.
 The request method is case-sensitive.
 
-  method         = token
+	method         = token
+- * RFC_9100: GET, HEAD, POST, PUT, DELETE, OPTIONS, TRACE
+- * RFC_5789: PATCH
 */
+
 type HttpMethod string
 
 const (
-	HttpMethodGet    HttpMethod = "GET"
-	HttpMethodHead   HttpMethod = "HEAD"
-	HttpMethodPost   HttpMethod = "POST"
-	HttpMethodPut    HttpMethod = "PUT"
-	HttpMethodDelete HttpMethod = "OPTIONS"
-	HttpMethodTrace  HttpMethod = "TRACE"
+	HttpMethodGet     HttpMethod = "GET"
+	HttpMethodHead    HttpMethod = "HEAD"
+	HttpMethodPost    HttpMethod = "POST"
+	HttpMethodPut     HttpMethod = "PUT"
+	HttpMethodPatch   HttpMethod = "PATCH"
+	HttpMethodDelete  HttpMethod = "DELETE"
+	HttpMethodOptions HttpMethod = "OPTIONS"
+	HttpMethodTrace   HttpMethod = "TRACE"
 )
+
+// Validates a http method
+func IsValidHttpMethod(m HttpMethod) bool {
+	switch m {
+	case HttpMethodGet,
+		HttpMethodHead,
+		HttpMethodPost,
+		HttpMethodPut,
+		HttpMethodPatch,
+		HttpMethodDelete,
+		HttpMethodOptions,
+		HttpMethodTrace:
+		return true
+	default:
+		return false
+	}
+}
 
 /*
 4. Status Line
@@ -299,7 +383,7 @@ const (
 The first line of a response message is the status-line, consisting of the protocol version, a space (SP),
 the status code, and another space and ending with an OPTIONAL textual phrase describing the status code.
 
-  status-line = HTTP-version SP status-code SP [ reason-phrase ]
+	status-line = HTTP-version SP status-code SP [ reason-phrase ]
 
 Although the status-line grammar rule requires that each of the component elements be separated by a single SP octet,
 recipients MAY instead parse on whitespace-delimited word boundaries and,
@@ -315,14 +399,14 @@ A recipient parses and interprets the remainder of the response message in light
 if the status code is recognized by that recipient,
 or in accordance with the class of that status code when the specific code is unrecognized.
 
-  status-code    = 3DIGIT
+	status-code    = 3DIGIT
 
 HTTP's core status codes are defined in Section 15 of [HTTP], along with the classes of status codes, considerations for the definition of new status codes, and the IANA registry for collecting such definitions.
 
 The reason-phrase element exists for the sole purpose of providing a textual description associated with the numeric status code,
 mostly out of deference to earlier Internet application protocols that were more frequently used with interactive text clients.
 
-  reason-phrase  = 1*( HTAB / SP / VCHAR / obs-text )
+	reason-phrase  = 1*( HTAB / SP / VCHAR / obs-text )
 
 A client SHOULD ignore the reason-phrase content because it is not a reliable channel for information (it might be translated for a given locale,
 overwritten by intermediaries,
@@ -352,7 +436,7 @@ func ParseStatusLine(status_line []byte) (*StatusLine, error) {
 Each field line consists of a case-insensitive field name followed by a colon (":"),
 optional leading whitespace, the field line value, and optional trailing whitespace.
 
-  field-line   = field-name ":" OWS field-value OWS
+	field-line   = field-name ":" OWS field-value OWS
 
 Rules for parsing within field values are defined in Section 5.5 of [HTTP].
 
@@ -414,7 +498,7 @@ The message body (if any) of an HTTP/1.1 message is used to carry content (Secti
 
 The message body is identical to the content unless a transfer coding has been applied, as described in Section 6.1.
 
-  message-body = *OCTET
+	message-body = *OCTET
 
 The rules for determining when a message body is present in an HTTP/1.1 message differ for requests and responses.
 
