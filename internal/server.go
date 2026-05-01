@@ -6,8 +6,6 @@ import (
 	"net"
 )
 
-var CRLF = []byte("\r\n")
-
 func StartServer() {
 	ln, err := net.Listen("tcp", ":8080")
 	if err != nil {
