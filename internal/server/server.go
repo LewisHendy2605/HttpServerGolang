@@ -1,9 +1,11 @@
-package main
+package server
 
 import (
 	"bytes"
 	"context"
 	"net"
+
+	"github.com/LewisHendy2605/HttpServerGolang/internal/parser"
 )
 
 func StartServer() {
@@ -37,11 +39,11 @@ func HandleConn(conn net.Conn, ctx context.Context) {
 				panic(err)
 			}
 
-			if !bytes.Contains(buffer, CRLF) {
+			if !bytes.Contains(buffer, parser.CRLF) {
 				message = append(message, buffer...)
 				numBytes += bytes_read
 			} else {
-				ParseRequestLine(message)
+				parser.ParseRequestLine(message)
 				message = message[:0]
 			}
 		}
