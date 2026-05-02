@@ -3,6 +3,7 @@ package parser
 import (
 	"bytes"
 	"fmt"
+	"io"
 )
 
 /*
@@ -110,8 +111,15 @@ type HttpResponse struct {
 }
 
 // Parses a http request
-func ParseHttpRequest(http_message []byte) (*HttpRequest, error) {
-	parts := bytes.SplitN(http_message, CRLF, 2)
+func ParseHttpRequest(reader io.Reader) (*HttpRequest, error) {
+	buffer := make([]byte, 1057)
+
+	_, err := reader.Read(buffer)
+	if err != nil {
+		return nil, err
+	}
+
+	parts := bytes.SplitN(buffer, CRLF, 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid http message: missing crlf")
 	}

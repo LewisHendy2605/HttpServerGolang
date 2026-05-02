@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"io"
+	"strings"
 	"testing"
 )
 
@@ -14,6 +16,12 @@ type HttpMethodTestTable struct {
 	name  string
 	input HttpMethod
 	valid bool
+}
+
+type HttpRequestTestTable struct {
+	name    string
+	input   io.Reader
+	wantErr bool
 }
 
 func TestParseHttpVersion(t *testing.T) {
@@ -102,13 +110,13 @@ func TestParseFieldLine(t *testing.T) {
 }
 
 func TestParseHttpRequest(t *testing.T) {
-	tests := []HttpVersionTestTable{
-		{name: "valid", input: []byte("GET https:/example.com HTTP/1.1\r\nContent-Type: text/plain\r\n\r\n"), wantErr: false},
-		{name: "valid", input: []byte("GET https:/example.com HTTP/1.1\r\nContent-Type: text/plain\r\n\r\nHello"), wantErr: false},
-		{name: "valid", input: []byte("GET https:/example.com HTTP/1.1\r\n\r\n"), wantErr: false},
-		{name: "valid", input: []byte("GET https:/example.com \r\n\r\n"), wantErr: true},
-		{name: "valid", input: []byte(" https:/example.com HTTP/1.1\r\n\r\n"), wantErr: true},
-		{name: "valid", input: []byte("GET  HTTP/1.1\r\n\r\n"), wantErr: true},
+	tests := []HttpRequestTestTable{
+		{name: "valid", input: strings.NewReader("GET https:/example.com HTTP/1.1\r\nContent-Type: text/plain\r\n\r\n"), wantErr: false},
+		{name: "valid", input: strings.NewReader("GET https:/example.com HTTP/1.1\r\nContent-Type: text/plain\r\n\r\nHello"), wantErr: false},
+		{name: "valid", input: strings.NewReader("GET https:/example.com HTTP/1.1\r\n\r\n"), wantErr: false},
+		{name: "valid", input: strings.NewReader("GET https:/example.com \r\n\r\n"), wantErr: true},
+		{name: "valid", input: strings.NewReader(" https:/example.com HTTP/1.1\r\n\r\n"), wantErr: true},
+		{name: "valid", input: strings.NewReader("GET  HTTP/1.1\r\n\r\n"), wantErr: true},
 	}
 
 	for _, tt := range tests {
