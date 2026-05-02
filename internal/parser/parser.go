@@ -127,15 +127,21 @@ func ParseHttpRequest(http_message []byte) (*HttpRequest, error) {
 
 	lines := bytes.Split(parts[1], CRLF)
 
+	endFieldLine := false
 	for i, line := range lines {
-		if bytes.Equal(line, CRLF) {
-			message_body = bytes.Join(lines[i:], CRLF)
-		} else {
+		if len(line) > 0 && !endFieldLine {
 			fl, err := ParseFieldLine(line)
 			if err != nil {
 				return nil, err
 			}
 			field_lines = append(field_lines, fl)
+		} else {
+			if len(line) == 0 {
+				endFieldLine = true
+			} else {
+				message_body = bytes.Join(lines[i:], CRLF)
+			}
+
 		}
 	}
 
@@ -321,8 +327,10 @@ func ParseRequestLine(request_line []byte) (*RequestLine, error) {
 		return nil, fmt.Errorf("invalid request line, invalid http method")
 	}
 
-	// TODO: Validate
-	request_target := parts[1]
+	request_target := bytes.Trim(parts[1], string(SP))
+	if len(request_target) == 0 {
+		return nil, fmt.Errorf("invalid request line, missing request target")
+	}
 
 	http_version, err := ParseHttpVersion(parts[2])
 	if err != nil {
