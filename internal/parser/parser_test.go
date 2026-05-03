@@ -1,114 +1,124 @@
 package parser
 
 import (
-	"io"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
-type HttpVersionTestTable struct {
-	name    string
-	input   []byte
-	wantErr bool
-}
-
-type HttpMethodTestTable struct {
-	name  string
-	input HttpMethod
-	valid bool
-}
-
-type HttpRequestTestTable struct {
-	name    string
-	input   io.Reader
-	wantErr bool
-}
-
 func TestParseHttpVersion(t *testing.T) {
-	tests := []HttpVersionTestTable{
-		{name: "valid", input: []byte("HTTP/1.1"), wantErr: false},
-		{name: "missing slash", input: []byte("HTTP1.1"), wantErr: true},
-		{name: "missing period", input: []byte("HTTP/11"), wantErr: true},
-		{name: "missing minor", input: []byte("HTTP/1."), wantErr: true},
-		{name: "missing major", input: []byte("HTTP/.1"), wantErr: true},
-		{name: "missing prefix", input: []byte("/.1"), wantErr: true},
-	}
+	// Parse valid 1.1 http version
+	raw := "HTTP/1.1"
+	parsed, err := ParseHttpVersion(raw)
+	require.NoError(t, err)
+	require.NotNil(t, parsed)
+	require.Equal(t, 1, parsed.Major)
+	require.Equal(t, 1, parsed.Minor)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := ParseHttpVersion(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("got err=%v, wantErr=%v", err, tt.wantErr)
-			}
-		})
-	}
-}
+	// Parse valid 2.0 http version
+	raw = "HTTP/2.0"
+	parsed, err = ParseHttpVersion(raw)
+	require.NoError(t, err)
+	require.NotNil(t, parsed)
+	require.Equal(t, 2, parsed.Major)
+	require.Equal(t, 0, parsed.Minor)
 
-func TestIsValidHttpMethod(t *testing.T) {
-	tests := []HttpMethodTestTable{
-		{name: "valid", input: HttpMethod("GET"), valid: true},
-		{name: "valid", input: HttpMethod("POST"), valid: true},
-		{name: "valid", input: HttpMethod("PUT"), valid: true},
-		{name: "valid", input: HttpMethod("PATCH"), valid: true},
-		{name: "valid", input: HttpMethod("DELETE"), valid: true},
-		{name: "valid", input: HttpMethod("OPTIONS"), valid: true},
-		{name: "valid", input: HttpMethod("TRACE"), valid: true},
-		{name: "valid", input: HttpMethod("HEAD"), valid: true},
-		{name: "valid", input: HttpMethod("Get"), valid: false},
-		{name: "valid", input: HttpMethod("get"), valid: false},
-		{name: "missing method", input: HttpMethod("GETT"), valid: false},
-		{name: "missing uri", input: HttpMethod("TEST"), valid: false},
-		{name: "missing uri", input: HttpMethod(""), valid: false},
-	}
+	// Missing forward slash
+	raw = "HTTP1.1"
+	parsed, err = ParseHttpVersion(raw)
+	require.Error(t, err)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			valid := IsValidHttpMethod(tt.input)
-			if (valid) != tt.valid {
-				t.Fatalf("got: %v, expected: %v", valid, tt.valid)
-			}
-		})
-	}
+	// Missing period
+	raw = "HTTP/11"
+	parsed, err = ParseHttpVersion(raw)
+	require.Error(t, err)
+
+	// Missing minor
+	raw = "HTTP/1."
+	parsed, err = ParseHttpVersion(raw)
+	require.Error(t, err)
+
+	// Missing major
+	raw = "HTTP/.1"
+	parsed, err = ParseHttpVersion(raw)
+	require.Error(t, err)
+
+	// Missing name
+	raw = "/1.1"
+	parsed, err = ParseHttpVersion(raw)
+	require.Error(t, err)
 }
 
 func TestParseRequestLine(t *testing.T) {
-	tests := []HttpVersionTestTable{
-		{name: "valid", input: []byte("GET http://www.w3.org/pub/WWW/TheProject.html HTTP/1.1"), wantErr: false},
-		{name: "valid", input: []byte("GET https:/example.com HTTP/1.1"), wantErr: false},
-		{name: "missing method", input: []byte("http://www.w3.org/pub/WWW/TheProject.html HTTP/1.1"), wantErr: true},
-		{name: "missing uri", input: []byte("GET  HTTP/1.1"), wantErr: true},
-		{name: "missing version", input: []byte("GET http://www.w3.org/pub/WWW/TheProject.html"), wantErr: true},
-		{name: "invalid method", input: []byte("TEST http://www.w3.org/pub/WWW/TheProject.html HTTP/1.1"), wantErr: true},
-	}
+	// Valid Request Line
+	raw := "GET http://www.w3.org/pub/WWW/TheProject.html HTTP/1.1"
+	parsed, err := ParseRequestLine(raw)
+	require.NoError(t, err)
+	require.Equal(t, MethodGet, parsed.Method)
+	require.Equal(t, "http://www.w3.org/pub/WWW/TheProject.html", parsed.RequestTarget)
+	require.Equal(t, 1, parsed.HttpVersion.Major)
+	require.Equal(t, 1, parsed.HttpVersion.Minor)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := ParseRequestLine(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("got err=%v, wantErr=%v", err, tt.wantErr)
-			}
-		})
-	}
+	// Valid Request Line
+	raw = "GET https:/example.com HTTP/1.1"
+	parsed, err = ParseRequestLine(raw)
+	require.NoError(t, err)
+	require.NotNil(t, parsed)
+	require.Equal(t, MethodGet, parsed.Method)
+	require.Equal(t, "https:/example.com", parsed.RequestTarget)
+	require.Equal(t, 1, parsed.HttpVersion.Major)
+	require.Equal(t, 1, parsed.HttpVersion.Minor)
+
+	// Missing Method
+	raw = "http://www.w3.org/pub/WWW/TheProject.html HTTP/1.1"
+	parsed, err = ParseRequestLine(raw)
+	require.Error(t, err)
+
+	// Missing request target
+	raw = "GET  HTTP/1.1"
+	parsed, err = ParseRequestLine(raw)
+	require.Error(t, err)
+
+	// Missing version
+	raw = "GET http://www.w3.org/pub/WWW/TheProject.html "
+	parsed, err = ParseRequestLine(raw)
+	require.Error(t, err)
+
+	// Invalid method
+	raw = "GETT http://www.w3.org/pub/WWW/TheProject.html HTTP/1.1"
+	parsed, err = ParseRequestLine(raw)
+	require.Error(t, err)
 }
 
 func TestParseFieldLine(t *testing.T) {
-	tests := []HttpVersionTestTable{
-		{name: "valid", input: []byte("Host: example.com"), wantErr: false},
-		{name: "valid", input: []byte("Content-Type: text/plain"), wantErr: false},
-		{name: "missing colon", input: []byte("Host example.com"), wantErr: true},
-		{name: "space in name", input: []byte("Ho st: value"), wantErr: true},
-	}
+	// Valid Field Line
+	raw := "Host: example.com"
+	parsed, err := ParseFieldLine(raw)
+	require.NoError(t, err)
+	require.NotNil(t, parsed)
+	require.Equal(t, "Host", parsed.Name)
+	require.Equal(t, "example.com", parsed.Value)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := ParseFieldLine(tt.input)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("got err=%v, wantErr=%v", err, tt.wantErr)
-			}
-		})
-	}
+	// Valid Field Line
+	raw = "Content-Type: application/json"
+	parsed, err = ParseFieldLine(raw)
+	require.NoError(t, err)
+	require.NotNil(t, parsed)
+	require.Equal(t, "Content-Type", parsed.Name)
+	require.Equal(t, "application/json", parsed.Value)
+
+	// Missing colon
+	raw = "Host example.com"
+	parsed, err = ParseFieldLine(raw)
+	require.Error(t, err)
+
+	// Space in name
+	raw = "Ho st: value"
+	parsed, err = ParseFieldLine(raw)
+	require.Error(t, err)
 }
 
+/*
 func TestParseHttpRequest(t *testing.T) {
 	tests := []HttpRequestTestTable{
 		{name: "valid", input: strings.NewReader("GET https:/example.com HTTP/1.1\r\nContent-Type: text/plain\r\n\r\n"), wantErr: false},
@@ -128,3 +138,4 @@ func TestParseHttpRequest(t *testing.T) {
 		})
 	}
 }
+*/

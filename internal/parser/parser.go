@@ -1,9 +1,9 @@
 package parser
 
 import (
-	"bytes"
 	"fmt"
-	"io"
+	"strconv"
+	"strings"
 )
 
 /*
@@ -60,15 +60,15 @@ The rules below are defined in [URI]:
 	port          = <port, see [URI], Section 3.2.3>
 	query         = <query, see [URI], Section 3.4>
 */
-var SP = []byte(" ")
-var CR = []byte("\r")
-var LF = []byte("\n")
-var CRLF = []byte("\r\n")
-var SLASH = []byte("/")
-var DOT = []byte(".")
-var COLON = []byte(":")
-var SEMICOLON = []byte(";")
-var HTAB = []byte("\t")
+var SP = " "
+var CR = "\r"
+var LF = "\n"
+var CRLF = "\r\n"
+var SLASH = "/"
+var DOT = "."
+var COLON = ":"
+var SEMICOLON = ";"
+var HTAB = "\t"
 
 /*
 2.1. Message Format
@@ -107,9 +107,10 @@ type HttpRequest struct {
 type HttpResponse struct {
 	StatusLine  *StatusLine
 	FieldLines  []*FieldLine
-	MessageBody []byte
+	MessageBody string
 }
 
+/*
 // Parses a http request
 func ParseHttpRequest(reader io.Reader) (*HttpRequest, error) {
 	buffer := make([]byte, 1057)
@@ -196,6 +197,7 @@ func ParseHttpResponse(http_message []byte) (*HttpResponse, error) {
 		MessageBody: message_body,
 	}, nil
 }
+*/
 
 /*
 2.2. Message Parsing
@@ -269,19 +271,18 @@ HTTP-version is case-sensitive.
 	HTTP-name     = %s"HTTP"
 */
 type HttpVersion struct {
-	Name  []byte
-	Major []byte
-	Minor []byte
+	Major int
+	Minor int
 }
 
 // Parses http version from start line
-func ParseHttpVersion(http_version []byte) (*HttpVersion, error) {
-	parts := bytes.Split(http_version, SLASH)
+func ParseHttpVersion(http_version string) (*HttpVersion, error) {
+	parts := strings.Split(http_version, SLASH)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid http version, missing forward slash")
 	}
 
-	version := bytes.Split(parts[1], DOT)
+	version := strings.Split(parts[1], DOT)
 	if len(version) != 2 {
 		return nil, fmt.Errorf("invalid http version, missing period")
 	}
@@ -301,10 +302,19 @@ func ParseHttpVersion(http_version []byte) (*HttpVersion, error) {
 		return nil, fmt.Errorf("invalid http version, missing minor")
 	}
 
+	majorInt, err := strconv.Atoi(major)
+	if err != nil {
+		return nil, fmt.Errorf("invalid http version, invalid major int value")
+	}
+
+	minorInt, err := strconv.Atoi(minor)
+	if err != nil {
+		return nil, fmt.Errorf("invalid http version, invalid minor int value")
+	}
+
 	return &HttpVersion{
-		Name:  name,
-		Major: major,
-		Minor: minor,
+		Major: majorInt,
+		Minor: minorInt,
 	}, nil
 }
 
@@ -318,24 +328,24 @@ and another single space (SP), and ends with the protocol version.
 request-line   = method SP request-target SP HTTP-version
 */
 type RequestLine struct {
-	Method        HttpMethod
-	RequestTarget []byte
+	Method        string
+	RequestTarget string
 	HttpVersion   *HttpVersion
 }
 
 // Parses http request line
-func ParseRequestLine(request_line []byte) (*RequestLine, error) {
-	parts := bytes.Split(request_line, SP)
+func ParseRequestLine(request_line string) (*RequestLine, error) {
+	parts := strings.Split(request_line, SP)
 	if len(parts) != 3 {
 		return nil, fmt.Errorf("invalid request line, missing space")
 	}
 
-	method := HttpMethod(string(bytes.ToUpper(parts[0])))
-	if !IsValidHttpMethod(method) {
+	method := strings.ToUpper(parts[0])
+	if !IsValidMethod(method) {
 		return nil, fmt.Errorf("invalid request line, invalid http method")
 	}
 
-	request_target := bytes.Trim(parts[1], string(SP))
+	request_target := strings.Trim(parts[1], SP)
 	if len(request_target) == 0 {
 		return nil, fmt.Errorf("invalid request line, missing request target")
 	}
@@ -363,30 +373,28 @@ The request method is case-sensitive.
 - * RFC_5789: PATCH
 */
 
-type HttpMethod string
-
 const (
-	HttpMethodGet     HttpMethod = "GET"
-	HttpMethodHead    HttpMethod = "HEAD"
-	HttpMethodPost    HttpMethod = "POST"
-	HttpMethodPut     HttpMethod = "PUT"
-	HttpMethodPatch   HttpMethod = "PATCH"
-	HttpMethodDelete  HttpMethod = "DELETE"
-	HttpMethodOptions HttpMethod = "OPTIONS"
-	HttpMethodTrace   HttpMethod = "TRACE"
+	MethodGet     string = "GET"
+	MethodHead    string = "HEAD"
+	MethodPost    string = "POST"
+	MethodPut     string = "PUT"
+	MethodPatch   string = "PATCH"
+	MethodDelete  string = "DELETE"
+	MethodOptions string = "OPTIONS"
+	MethodTrace   string = "TRACE"
 )
 
 // Validates a http method
-func IsValidHttpMethod(m HttpMethod) bool {
+func IsValidMethod(m string) bool {
 	switch m {
-	case HttpMethodGet,
-		HttpMethodHead,
-		HttpMethodPost,
-		HttpMethodPut,
-		HttpMethodPatch,
-		HttpMethodDelete,
-		HttpMethodOptions,
-		HttpMethodTrace:
+	case MethodGet,
+		MethodHead,
+		MethodPost,
+		MethodPut,
+		MethodPatch,
+		MethodDelete,
+		MethodOptions,
+		MethodTrace:
 		return true
 	default:
 		return false
@@ -431,13 +439,13 @@ or discarded when the message is forwarded via other versions of HTTP).
 A server MUST send the space that separates the status-code from the reason-phrase even when the reason-phrase is absent (i.e., the status-line would end with the space).
 */
 type StatusLine struct {
-	HttpVersion  []byte
-	StatusCode   []byte
-	ReasonPhrase []byte
+	HttpVersion  string
+	StatusCode   string
+	ReasonPhrase string
 }
 
-func ParseStatusLine(status_line []byte) (*StatusLine, error) {
-	parts := bytes.Split(status_line, SP)
+func ParseStatusLine(status_line string) (*StatusLine, error) {
+	parts := strings.Split(status_line, SP)
 
 	return &StatusLine{
 		HttpVersion:  parts[0],
@@ -478,13 +486,13 @@ The field line value does not include that leading or trailing whitespace: OWS o
 or after the last non-whitespace octet of the field line value, is excluded by parsers when extracting the field line value from a field line.
 */
 type FieldLine struct {
-	FieldName  []byte
-	FieldValue []byte
+	Name  string
+	Value string
 }
 
 // Parses Field Line
-func ParseFieldLine(file_line []byte) (*FieldLine, error) {
-	parts := bytes.SplitN(file_line, COLON, 2)
+func ParseFieldLine(file_line string) (*FieldLine, error) {
+	parts := strings.SplitN(file_line, COLON, 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid field line: missing colon")
 	}
@@ -492,18 +500,18 @@ func ParseFieldLine(file_line []byte) (*FieldLine, error) {
 	name := parts[0]
 
 	// 5.1. 'No whitespace is allowed between the field name and colon.'
-	if bytes.Contains(name, SP) || bytes.Contains(name, HTAB) {
+	if strings.Contains(name, SP) || strings.Contains(name, HTAB) {
 		return nil, fmt.Errorf("Error parsing field line, field name. Found unexpected white space")
 	}
 
 	value := parts[1]
 
 	// Trim OWS (space + tab only)
-	value = bytes.Trim(value, " \t")
+	value = strings.Trim(value, " \t")
 
 	return &FieldLine{
-		FieldName:  name,
-		FieldValue: value,
+		Name:  name,
+		Value: value,
 	}, nil
 }
 
