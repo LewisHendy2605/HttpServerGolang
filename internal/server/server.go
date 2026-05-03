@@ -3,50 +3,79 @@ package server
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"log"
 	"net"
-
-	"github.com/LewisHendy2605/HttpServerGolang/internal/parser"
 )
 
-func StartServer() {
-	ln, err := net.Listen("tcp", ":8080")
+// Starts tcp server
+func StartServer(address string) {
+	listener, err := net.Listen("tcp", address)
 	if err != nil {
-		panic(err)
+		log.Fatal("error", "error", err)
 	}
 
 	for {
-		conn, err := ln.Accept()
+		conn, err := listener.Accept()
 		if err != nil {
-			panic(err)
+			log.Fatalf("error accepting connection: %v", err)
 		}
 
-		go HandleConn(conn, context.Background())
+		for lines := range ReadLines(conn, context.Background()) {
+			fmt.Println(lines)
+		}
 	}
 }
 
-func HandleConn(conn net.Conn, ctx context.Context) {
-	buffer := make([]byte, 2)
-	message := make([]byte, 1057)
-	numBytes := 0
+// Returns lines from a reader/closer
+func ReadLines(conn io.ReadCloser, ctx context.Context) <-chan string {
+	out := make(chan string)
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			bytes_read, err := conn.Read(buffer)
-			if err != nil {
-				panic(err)
+	go func() {
+		defer conn.Close()
+		defer close(out)
+
+		str := ""
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				buffer := make([]byte, 8)
+
+				bytes_read, err := conn.Read(buffer)
+				if err == io.EOF {
+					return
+				} else if err != nil {
+					log.Fatalf("error reading from conn: %v", err)
+				}
+
+				// Grab whats been read
+				buffer = buffer[:bytes_read]
+
+				// Look for new line
+				if i := bytes.IndexByte(buffer, '\n'); i != -1 {
+					// Grab up to new line
+					str += string(buffer[:i])
+
+					// Pass out line
+					out <- str
+
+					// Reset
+					buffer = buffer[i+1:]
+					str = ""
+				} else {
+					// Store in string
+					str += string(buffer)
+				}
 			}
 
-			if !bytes.Contains(buffer, parser.CRLF) {
-				message = append(message, buffer...)
-				numBytes += bytes_read
-			} else {
-				parser.ParseRequestLine(message)
-				message = message[:0]
+			if len(str) != 0 {
+				out <- str
 			}
 		}
+	}()
 
-	}
+	return out
 }

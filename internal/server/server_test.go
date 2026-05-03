@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"testing"
@@ -10,12 +9,14 @@ import (
 func TestServer(t *testing.T) {
 	client, conn := net.Pipe()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx := t.Context()
 
-	go HandleConn(conn, ctx)
-	defer conn.Close()
+	go func() {
+		defer client.Close()
+		fmt.Fprintf(client, "GET /coffee HTTP/1.1\r\n")
+	}()
 
-	fmt.Fprintf(client, "GET / HTTP/1.0\r\n")
-
-	cancel()
+	for line := range ReadLines(conn, ctx) {
+		fmt.Printf("Request Line: %s\n", line)
+	}
 }
