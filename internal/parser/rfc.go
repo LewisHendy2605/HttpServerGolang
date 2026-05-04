@@ -1,8 +1,6 @@
 package parser
 
 import (
-	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -12,63 +10,6 @@ Resources:
 	RFC: 9110 : https://www.rfc-editor.org/rfc/rfc9110
 	RFC_5789  : https://www.rfc-editor.org/rfc/rfc5789.html
 */
-
-/*
-1.2. Syntax Notation
-
-This specification uses the Augmented Backus-Naur Form (ABNF) notation of [RFC5234], extended with the notation for case-sensitivity in strings defined in [RFC7405].
-
-It also uses a list extension, defined in Section 5.6.1 of [HTTP], that allows for compact definition of comma-separated lists using a "#" operator (similar to how the "*" operator indicates repetition).
-
-Appendix A shows the collected grammar with all list operators expanded to standard ABNF notation.
-
-As a convention, ABNF rule names prefixed with "obs-" denote obsolete grammar rules that appear for historical reasons.
-
-The following core rules are included by reference, as defined in [RFC5234],
-Appendix B.1: ALPHA (letters),
-
-	CR (carriage return),
-	CRLF (CR LF),
-	CTL (controls),
-	DIGIT (decimal 0-9),
-	DQUOTE (double quote),
-	HEXDIG (hexadecimal 0-9/A-F/a-f),
-	HTAB (horizontal tab), LF (line feed),
-	OCTET (any 8-bit sequence of data),
-	SP (space),
-	and VCHAR (any visible [USASCII] character).
-
-The rules below are defined in [HTTP]:
-
-	BWS           = <BWS, see [HTTP], Section 5.6.3>
-	OWS           = <OWS, see [HTTP], Section 5.6.3>
-	RWS           = <RWS, see [HTTP], Section 5.6.3>
-	absolute-path = <absolute-path, see [HTTP], Section 4.1>
-	field-name    = <field-name, see [HTTP], Section 5.1>
-	field-value   = <field-value, see [HTTP], Section 5.5>
-	obs-text      = <obs-text, see [HTTP], Section 5.6.4>
-	quoted-string = <quoted-string, see [HTTP], Section 5.6.4>
-	token         = <token, see [HTTP], Section 5.6.2>
-	transfer-coding =
-	                <transfer-coding, see [HTTP], Section 10.1.4>
-
-The rules below are defined in [URI]:
-
-	absolute-URI  = <absolute-URI, see [URI], Section 4.3>
-	authority     = <authority, see [URI], Section 3.2>
-	uri-host      = <host, see [URI], Section 3.2.2>
-	port          = <port, see [URI], Section 3.2.3>
-	query         = <query, see [URI], Section 3.4>
-*/
-var SP = " "
-var CR = "\r"
-var LF = "\n"
-var CRLF = "\r\n"
-var SLASH = "/"
-var DOT = "."
-var COLON = ":"
-var SEMICOLON = ";"
-var HTAB = "\t"
 
 /*
 2.1. Message Format
@@ -98,69 +39,14 @@ and clients are implemented to only expect a response.
 
 HTTP makes use of some protocol elements similar to the Multipurpose Internet Mail Extensions (MIME) [RFC2045].
 */
-type HttpRequest struct {
-	RequestLine *RequestLine
-	FieldLines  []*FieldLine
-	MessageBody []byte
-}
 
-type HttpResponse struct {
+type Response struct {
 	StatusLine  *StatusLine
-	FieldLines  []*FieldLine
+	FieldLines  []string
 	MessageBody string
 }
 
 /*
-// Parses a http request
-func ParseHttpRequest(reader io.Reader) (*HttpRequest, error) {
-	buffer := make([]byte, 1057)
-
-	_, err := reader.Read(buffer)
-	if err != nil {
-		return nil, err
-	}
-
-	parts := bytes.SplitN(buffer, CRLF, 2)
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid http message: missing crlf")
-	}
-
-	// 'In practice, servers are implemented to only expect a request'
-	request_line, err := ParseRequestLine(parts[0])
-	if err != nil {
-		return nil, err
-	}
-
-	var message_body []byte
-	var field_lines []*FieldLine
-
-	lines := bytes.Split(parts[1], CRLF)
-
-	endFieldLine := false
-	for i, line := range lines {
-		if len(line) > 0 && !endFieldLine {
-			fl, err := ParseFieldLine(line)
-			if err != nil {
-				return nil, err
-			}
-			field_lines = append(field_lines, fl)
-		} else {
-			if len(line) == 0 {
-				endFieldLine = true
-			} else {
-				message_body = bytes.Join(lines[i:], CRLF)
-			}
-
-		}
-	}
-
-	return &HttpRequest{
-		RequestLine: request_line,
-		FieldLines:  field_lines,
-		MessageBody: message_body,
-	}, nil
-}
-
 // Parses a http response
 func ParseHttpResponse(http_message []byte) (*HttpResponse, error) {
 	parts := bytes.SplitN(http_message, CRLF, 2)
@@ -259,149 +145,6 @@ robustness exceptions listed above, the server SHOULD respond with a 400 (Bad Re
 */
 
 /*
-2.3. HTTP Version
-
-HTTP uses a "<major>.<minor>" numbering scheme to indicate versions of the protocol.
-This specification defines version "1.1". Section 2.5 of [HTTP] specifies the semantics of HTTP version numbers.
-
-The version of an HTTP/1.x message is indicated by an HTTP-version field in the start-line.
-HTTP-version is case-sensitive.
-
-	HTTP-version  = HTTP-name "/" DIGIT "." DIGIT
-	HTTP-name     = %s"HTTP"
-*/
-type HttpVersion struct {
-	Major int
-	Minor int
-}
-
-// Parses http version from start line
-func ParseHttpVersion(http_version string) (*HttpVersion, error) {
-	parts := strings.Split(http_version, SLASH)
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid http version, missing forward slash")
-	}
-
-	version := strings.Split(parts[1], DOT)
-	if len(version) != 2 {
-		return nil, fmt.Errorf("invalid http version, missing period")
-	}
-
-	name := parts[0]
-	if len(name) == 0 {
-		return nil, fmt.Errorf("invalid http version, missing name")
-	}
-
-	major := version[0]
-	if len(major) == 0 {
-		return nil, fmt.Errorf("invalid http version, missing major")
-	}
-
-	minor := version[1]
-	if len(minor) == 0 {
-		return nil, fmt.Errorf("invalid http version, missing minor")
-	}
-
-	majorInt, err := strconv.Atoi(major)
-	if err != nil {
-		return nil, fmt.Errorf("invalid http version, invalid major int value")
-	}
-
-	minorInt, err := strconv.Atoi(minor)
-	if err != nil {
-		return nil, fmt.Errorf("invalid http version, invalid minor int value")
-	}
-
-	return &HttpVersion{
-		Major: majorInt,
-		Minor: minorInt,
-	}, nil
-}
-
-/*
-3. Request Line
-
-A request-line begins with a method token,
-followed by a single space (SP), the request-target,
-and another single space (SP), and ends with the protocol version.
-
-request-line   = method SP request-target SP HTTP-version
-*/
-type RequestLine struct {
-	Method        string
-	RequestTarget string
-	HttpVersion   *HttpVersion
-}
-
-// Parses http request line
-func ParseRequestLine(request_line string) (*RequestLine, error) {
-	parts := strings.Split(request_line, SP)
-	if len(parts) != 3 {
-		return nil, fmt.Errorf("invalid request line, missing space")
-	}
-
-	method := strings.ToUpper(parts[0])
-	if !IsValidMethod(method) {
-		return nil, fmt.Errorf("invalid request line, invalid http method")
-	}
-
-	request_target := strings.Trim(parts[1], SP)
-	if len(request_target) == 0 {
-		return nil, fmt.Errorf("invalid request line, missing request target")
-	}
-
-	http_version, err := ParseHttpVersion(parts[2])
-	if err != nil {
-		return nil, err
-	}
-
-	return &RequestLine{
-		Method:        method,
-		RequestTarget: request_target,
-		HttpVersion:   http_version,
-	}, nil
-}
-
-/*
-3.1. Method
-
-The method token indicates the request method to be performed on the target resource.
-The request method is case-sensitive.
-
-	method         = token
-- * RFC_9100: GET, HEAD, POST, PUT, DELETE, OPTIONS, TRACE
-- * RFC_5789: PATCH
-*/
-
-const (
-	MethodGet     string = "GET"
-	MethodHead    string = "HEAD"
-	MethodPost    string = "POST"
-	MethodPut     string = "PUT"
-	MethodPatch   string = "PATCH"
-	MethodDelete  string = "DELETE"
-	MethodOptions string = "OPTIONS"
-	MethodTrace   string = "TRACE"
-)
-
-// Validates a http method
-func IsValidMethod(m string) bool {
-	switch m {
-	case MethodGet,
-		MethodHead,
-		MethodPost,
-		MethodPut,
-		MethodPatch,
-		MethodDelete,
-		MethodOptions,
-		MethodTrace:
-		return true
-	default:
-		return false
-	}
-}
-
-/*
 4. Status Line
 
 The first line of a response message is the status-line, consisting of the protocol version, a space (SP),
@@ -445,73 +188,12 @@ type StatusLine struct {
 }
 
 func ParseStatusLine(status_line string) (*StatusLine, error) {
-	parts := strings.Split(status_line, SP)
+	parts := strings.Split(status_line, " ")
 
 	return &StatusLine{
 		HttpVersion:  parts[0],
 		StatusCode:   parts[1],
 		ReasonPhrase: parts[2],
-	}, nil
-}
-
-/*
-5. Field Syntax
-
-Each field line consists of a case-insensitive field name followed by a colon (":"),
-optional leading whitespace, the field line value, and optional trailing whitespace.
-
-	field-line   = field-name ":" OWS field-value OWS
-
-Rules for parsing within field values are defined in Section 5.5 of [HTTP].
-
-This section covers the generic syntax for header field inclusion within, and extraction from, HTTP/1.1 messages.
-
-5.1. Field Line Parsing
-
-Messages are parsed using a generic algorithm, independent of the individual field names.
-
-The contents within a given field line value are not parsed until a later stage of message interpretation (usually after the message's entire field section has been processed).
-
-No whitespace is allowed between the field name and colon.
-
-In the past, differences in the handling of such whitespace have led to security vulnerabilities in request routing and response handling.
-
-A server MUST reject, with a response status code of 400 (Bad Request), any received request message that contains whitespace between a header field name and colon.
-
-A proxy MUST remove any such whitespace from a response message before forwarding the message downstream.
-
-A field line value might be preceded and/or followed by optional whitespace (OWS); a single SP preceding the field line value is preferred for consistent readability by humans.
-
-The field line value does not include that leading or trailing whitespace: OWS occurring before the first non-whitespace octet of the field line value,
-or after the last non-whitespace octet of the field line value, is excluded by parsers when extracting the field line value from a field line.
-*/
-type FieldLine struct {
-	Name  string
-	Value string
-}
-
-// Parses Field Line
-func ParseFieldLine(file_line string) (*FieldLine, error) {
-	parts := strings.SplitN(file_line, COLON, 2)
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid field line: missing colon")
-	}
-
-	name := parts[0]
-
-	// 5.1. 'No whitespace is allowed between the field name and colon.'
-	if strings.Contains(name, SP) || strings.Contains(name, HTAB) {
-		return nil, fmt.Errorf("Error parsing field line, field name. Found unexpected white space")
-	}
-
-	value := parts[1]
-
-	// Trim OWS (space + tab only)
-	value = strings.Trim(value, " \t")
-
-	return &FieldLine{
-		Name:  name,
-		Value: value,
 	}, nil
 }
 
