@@ -1,4 +1,4 @@
-package request
+package syntax_notation
 
 /*
 1.2. Syntax Notation

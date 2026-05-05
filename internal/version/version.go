@@ -1,9 +1,11 @@
-package request
+package version
 
 import (
 	"bytes"
 	"fmt"
 	"strconv"
+
+	"github.com/LewisHendy2605/HttpServerGolang/internal/syntax_notation"
 )
 
 /*
@@ -23,9 +25,14 @@ type HttpVersion struct {
 	Minor int
 }
 
+// Formats Http version back to string
+func (v *HttpVersion) String() string {
+	return fmt.Sprintf("HTTP/%d.%d", v.Major, v.Minor)
+}
+
 // Parses http version from start line
 func (v *HttpVersion) Parse(data []byte) error {
-	parts := bytes.Split(data, []byte(SLASH))
+	parts := bytes.Split(data, []byte(syntax_notation.SLASH))
 	if len(parts) != 2 {
 		return fmt.Errorf("invalid http version, missing forward slash")
 	}
@@ -35,7 +42,7 @@ func (v *HttpVersion) Parse(data []byte) error {
 		return fmt.Errorf("invalid http version, invalid or missing name")
 	}
 
-	version := bytes.Split(parts[1], []byte(DOT))
+	version := bytes.Split(parts[1], []byte(syntax_notation.DOT))
 	if len(version) != 2 {
 		return fmt.Errorf("invalid http version, missing period")
 	}

@@ -1,9 +1,11 @@
-package request
+package field_line
 
 import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	"github.com/LewisHendy2605/HttpServerGolang/internal/syntax_notation"
 )
 
 /*
@@ -64,13 +66,13 @@ func (h *Headers) Parse(data []byte) (int, error) {
 	bytes_read := 0
 
 	for {
-		index := bytes.Index(data[bytes_read:], []byte(CRLF))
+		index := bytes.Index(data[bytes_read:], []byte(syntax_notation.CRLF))
 		if index == -1 {
 			break
 		}
 
 		field_line := data[bytes_read : bytes_read+index]
-		bytes_read += index + len(CRLF)
+		bytes_read += index + len(syntax_notation.CRLF)
 
 		if len(field_line) == 0 {
 			break
@@ -78,17 +80,17 @@ func (h *Headers) Parse(data []byte) (int, error) {
 
 		fmt.Printf("Parsing header: %s\n", string(field_line))
 
-		parts := bytes.SplitN(field_line, []byte(COLON), 2)
+		parts := bytes.SplitN(field_line, []byte(syntax_notation.COLON), 2)
 		if len(parts) != 2 {
 			return 0, fmt.Errorf("invalid field line: missing colon")
 		}
 
 		name := string(parts[0])
-		if strings.Contains(name, SP) || strings.Contains(name, HTAB) {
+		if strings.Contains(name, syntax_notation.SP) || strings.Contains(name, syntax_notation.HTAB) {
 			return 0, fmt.Errorf("Error parsing field line, field name. Found unexpected white space")
 		}
 
-		value := strings.TrimSpace(strings.Trim(string(parts[1]), HTAB))
+		value := strings.TrimSpace(strings.Trim(string(parts[1]), syntax_notation.HTAB))
 
 		fmt.Printf("Setting new header. Name: %s, Value: %s\n", name, value)
 		h.Set(name, value)
