@@ -39,22 +39,35 @@ A field line value might be preceded and/or followed by optional whitespace (OWS
 The field line value does not include that leading or trailing whitespace: OWS occurring before the first non-whitespace octet of the field line value,
 or after the last non-whitespace octet of the field line value, is excluded by parsers when extracting the field line value from a field line.
 */
-type Headers map[string]string
-
-func (h Headers) Set(name string, value string) {
-	h[strings.ToLower(name)] = value
+type Headers struct {
+	filed_lines map[string]string
 }
 
-func (h Headers) Get(name string) (string, bool) {
-	val, ok := h[strings.ToLower(name)]
+// Setter for header values
+func (h *Headers) Set(name string, value string) {
+	name_lower := strings.ToLower(name)
+
+	// Append any repeating values to a comma separated string
+	if _, ok := h.Get(name_lower); ok {
+		h.filed_lines[name_lower] = strings.Join([]string{h.filed_lines[name_lower], value}, ", ")
+		return
+	}
+
+	h.filed_lines[name_lower] = value
+}
+
+// Getter for header values
+func (h *Headers) Get(name string) (string, bool) {
+	val, ok := h.filed_lines[strings.ToLower(name)]
 	return val, ok
 
 }
 
-func (h Headers) String() string {
-	headers := make([]string, len(h))
+// Formats headers to comma separated list
+func (h *Headers) String() string {
+	headers := make([]string, len(h.filed_lines))
 
-	for k, v := range h {
+	for k, v := range h.filed_lines {
 		headers = append(headers, fmt.Sprintf("%s: %s", k, v))
 	}
 
@@ -63,6 +76,7 @@ func (h Headers) String() string {
 
 // Parses Field Line
 func (h *Headers) Parse(data []byte) (int, error) {
+	h.filed_lines = make(map[string]string)
 	bytes_read := 0
 
 	for {
@@ -78,22 +92,24 @@ func (h *Headers) Parse(data []byte) (int, error) {
 			break
 		}
 
-		fmt.Printf("Parsing header: %s\n", string(field_line))
-
 		parts := bytes.SplitN(field_line, []byte(syntax_notation.COLON), 2)
 		if len(parts) != 2 {
 			return 0, fmt.Errorf("invalid field line: missing colon")
 		}
 
-		name := string(parts[0])
-		if strings.Contains(name, syntax_notation.SP) || strings.Contains(name, syntax_notation.HTAB) {
-			return 0, fmt.Errorf("Error parsing field line, field name. Found unexpected white space")
+		name := parts[0]
+		if bytes.Contains(name, []byte(syntax_notation.SP)) {
+			return 0, fmt.Errorf("Error parsing field line, found unexpected white space in name")
 		}
 
-		value := strings.TrimSpace(strings.Trim(string(parts[1]), syntax_notation.HTAB))
+		value := parts[1]
+		if bytes.Index(value, []byte(syntax_notation.SP)) != 0 {
+			return 0, fmt.Errorf("invalid field line: missing required white space at start of value")
+		}
 
-		fmt.Printf("Setting new header. Name: %s, Value: %s\n", name, value)
-		h.Set(name, value)
+		value = bytes.TrimSpace(value)
+
+		h.Set(string(name), string(value))
 	}
 
 	return bytes_read, nil
