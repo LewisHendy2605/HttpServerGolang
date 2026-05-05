@@ -1,9 +1,11 @@
 package status_line
 
 import (
-	"strings"
+	"bytes"
+	"fmt"
 
 	"github.com/LewisHendy2605/HttpServerGolang/internal/syntax_notation"
+	"github.com/LewisHendy2605/HttpServerGolang/internal/version"
 )
 
 /*
@@ -44,17 +46,39 @@ or discarded when the message is forwarded via other versions of HTTP).
 A server MUST send the space that separates the status-code from the reason-phrase even when the reason-phrase is absent (i.e., the status-line would end with the space).
 */
 type StatusLine struct {
-	HttpVersion  string
+	HttpVersion  *version.HttpVersion
 	StatusCode   string
 	ReasonPhrase string
 }
 
-func ParseStatusLine(status_line string) (*StatusLine, error) {
-	parts := strings.Split(status_line, syntax_notation.SP)
+// Formats Request Line to string for debugging
+func (sl *StatusLine) String() string {
+	return fmt.Sprintf("%s %s %s", sl.HttpVersion.String(), sl.StatusCode, sl.ReasonPhrase)
+}
 
-	return &StatusLine{
-		HttpVersion:  parts[0],
-		StatusCode:   parts[1],
-		ReasonPhrase: parts[2],
-	}, nil
+// Parses http request line
+func (sl *StatusLine) Parse(data []byte) (int, error) {
+	index := bytes.Index(data, []byte(syntax_notation.CRLF))
+	if index == -1 {
+		return 0, nil
+	}
+
+	start_line := data[:index]
+
+	parts := bytes.Split(start_line, []byte(syntax_notation.SP))
+	if len(parts) != 3 {
+		return 0, fmt.Errorf("invalid status line, missing space")
+	}
+
+	sl.HttpVersion = &version.HttpVersion{}
+	err := sl.HttpVersion.Parse(parts[2])
+	if err != nil {
+		return 0, err
+	}
+
+	sl.StatusCode = string(parts[0])
+
+	sl.ReasonPhrase = string(parts[1])
+
+	return index + len(syntax_notation.CRLF), nil
 }
