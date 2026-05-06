@@ -55,4 +55,23 @@ func TestParseFieldLine(t *testing.T) {
 	index, err = h.Parse([]byte("Host:value" + syntax_notation.CRLF))
 	require.Error(t, err)
 	require.Equal(t, 0, index)
+
+	// Invalid token in name
+	h = Headers{}
+	index, err = h.Parse([]byte("Ho\tst:value" + syntax_notation.CRLF))
+	require.Error(t, err)
+	require.Equal(t, 0, index)
+
+	// Invalid token in name
+	h = Headers{}
+	index, err = h.Parse([]byte("Ho\rst:value" + syntax_notation.CRLF))
+	require.Error(t, err)
+	require.Equal(t, 0, index)
+
+	// Invalid token in name
+	h = Headers{}
+	index, err = h.Parse([]byte("\x00:value\r\n"))
+	require.Error(t, err)
+	require.Equal(t, 0, index)
+
 }

@@ -101,16 +101,41 @@ func (h *Headers) Parse(data []byte) (int, error) {
 		if bytes.Contains(name, []byte(syntax_notation.SP)) {
 			return 0, fmt.Errorf("Error parsing field line, found unexpected white space in name")
 		}
+		if !isToken(name) {
+			return 0, fmt.Errorf("Error parsing field line, name contained invalid token")
+		}
 
 		value := parts[1]
 		if bytes.Index(value, []byte(syntax_notation.SP)) != 0 {
 			return 0, fmt.Errorf("invalid field line: missing required white space at start of value")
 		}
-
 		value = bytes.TrimSpace(value)
 
 		h.Set(string(name), string(value))
 	}
 
 	return bytes_read, nil
+}
+
+func isToken(data []byte) bool {
+	for _, b := range data {
+		switch {
+		case b >= 'a' && b <= 'z':
+			continue
+		case b >= 'A' && b <= 'Z':
+			continue
+		case b >= '0' && b <= '9':
+			continue
+		case b == '!' || b == '#' || b == '$' || b == '%' ||
+			b == '&' || b == '\'' || b == '*' || b == '+' ||
+			b == '-' || b == '.' || b == '^' || b == '_' ||
+			b == '`' || b == '|' || b == '~':
+			continue
+		default:
+			return false
+
+		}
+	}
+
+	return true
 }
