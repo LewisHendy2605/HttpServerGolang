@@ -48,7 +48,7 @@ HTTP makes use of some protocol elements similar to the Multipurpose Internet Ma
 
 type Request struct {
 	RequestLine *request_line.RequestLine
-	Headers     field_line.Headers
+	Headers     *field_line.Headers
 	state       ParserState
 }
 
@@ -74,7 +74,7 @@ outerLoop:
 			bytes_read += read
 			r.state = StateFieldLine
 		case StateFieldLine:
-			r.Headers = field_line.Headers{}
+			r.Headers = &field_line.Headers{}
 			read, err := r.Headers.Parse(current_data)
 			if err != nil {
 				return err
