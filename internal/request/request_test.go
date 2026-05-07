@@ -17,6 +17,7 @@ func TestParseRequest(t *testing.T) {
 	require.Equal(t, "/", req.RequestLine.RequestTarget)
 	require.Equal(t, 1, req.RequestLine.HttpVersion.Major)
 	require.Equal(t, 1, req.RequestLine.HttpVersion.Minor)
+	require.Equal(t, []byte("Hello"), req.Body)
 
 	val, ok := req.Headers.Get("HOST")
 	require.True(t, ok)

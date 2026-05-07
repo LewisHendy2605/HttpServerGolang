@@ -49,6 +49,7 @@ HTTP makes use of some protocol elements similar to the Multipurpose Internet Ma
 type Request struct {
 	RequestLine *request_line.RequestLine
 	Headers     *field_line.Headers
+	Body        []byte
 	state       ParserState
 }
 
@@ -81,6 +82,9 @@ outerLoop:
 			}
 
 			bytes_read += read
+			r.state = StateMessageBody
+		case StateMessageBody:
+			r.Body = current_data
 			r.state = StateDone
 		case StateDone:
 			break outerLoop
