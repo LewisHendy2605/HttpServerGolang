@@ -1,6 +1,7 @@
 package request
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -53,8 +54,19 @@ type Request struct {
 	state       ParserState
 }
 
+// Formats request to a string, primarily for debugging
 func (r *Request) String() string {
 	return fmt.Sprintf("{ RequestLine: %s, Headers: %s }", r.RequestLine.String(), r.Headers.String())
+}
+
+// Returns request body parsed as text
+func (r *Request) Text() string {
+	return string(r.Body)
+}
+
+// Returns request body Unmarshaled to input struct
+func (r *Request) Json(v any) error {
+	return json.Unmarshal(r.Body, v)
 }
 
 // Parses a http request
@@ -94,6 +106,7 @@ outerLoop:
 	return nil
 }
 
+// Creates and parses a http request from a reader
 func RequestFromReader(reader io.Reader) (*Request, error) {
 	buffer := make([]byte, 1024)
 	request := &Request{state: StateInit}
