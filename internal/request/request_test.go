@@ -62,4 +62,9 @@ func TestParseRequest(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, jsonStruct.Id, jsonOutput.Id)
 	require.Equal(t, jsonStruct.Message, jsonOutput.Message)
+
+	reader = strings.NewReader("GeT / HTTP/1.1\r\nContent-Type : application/json\r\n\r\n")
+	req, err = RequestFromReader(reader)
+	require.Error(t, err)
+	require.Nil(t, req)
 }
