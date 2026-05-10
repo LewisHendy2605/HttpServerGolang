@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/LewisHendy2605/HttpServerGolang/internal/field_line"
 	"github.com/LewisHendy2605/HttpServerGolang/internal/request_line"
@@ -96,8 +97,19 @@ outerLoop:
 			bytes_read += read
 			r.state = StateMessageBody
 		case StateMessageBody:
-			r.Body = current_data
-			r.state = StateDone
+			contentLength, ok := r.Headers.Get("content-length")
+			if !ok {
+				r.state = StateDone
+			} else {
+				readInt, err := strconv.Atoi(contentLength)
+				if err != nil {
+					return err
+				}
+
+				r.Body = current_data[:readInt]
+				r.state = StateDone
+			}
+
 		case StateDone:
 			break outerLoop
 		}

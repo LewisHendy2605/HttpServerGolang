@@ -2,6 +2,7 @@ package request
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -17,7 +18,7 @@ type TestJsonStruct struct {
 
 func TestParseRequest(t *testing.T) {
 	// Test good request
-	reader := strings.NewReader("GET / HTTP/1.1\r\nHost: example.com\r\nUser-Agent: golang_application\r\n\r\nHello")
+	reader := strings.NewReader("GET / HTTP/1.1\r\nHost: example.com\r\nUser-Agent: golang_application\r\nContent-Length: 5\r\n\r\nHello")
 	req, err := RequestFromReader(reader)
 	require.NoError(t, err)
 	require.NotNil(t, req)
@@ -36,6 +37,10 @@ func TestParseRequest(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "golang_application", val)
 
+	cl, ok := req.Headers.Get("content-length")
+	require.True(t, ok)
+	require.Equal(t, "5", cl)
+
 	// Test good json request
 	jsonStruct := &TestJsonStruct{
 		Id:      uuid.NewString(),
@@ -44,7 +49,7 @@ func TestParseRequest(t *testing.T) {
 	jsonString, err := json.Marshal(jsonStruct)
 	require.NoError(t, err)
 
-	reader = strings.NewReader("GET / HTTP/1.1\r\nContent-Type: application/json\r\n\r\n" + string(jsonString))
+	reader = strings.NewReader(fmt.Sprintf("GET / HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", len(jsonString), string(jsonString)))
 	req, err = RequestFromReader(reader)
 	require.NoError(t, err)
 	require.NotNil(t, req)
