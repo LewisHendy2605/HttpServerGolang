@@ -40,7 +40,7 @@ The field line value does not include that leading or trailing whitespace: OWS o
 or after the last non-whitespace octet of the field line value, is excluded by parsers when extracting the field line value from a field line.
 */
 type Headers struct {
-	filed_lines map[string]string
+	headers map[string]string
 }
 
 // Setter for header values
@@ -49,25 +49,25 @@ func (h *Headers) Set(name string, value string) {
 
 	// Append any repeating values to a comma separated string
 	if _, ok := h.Get(name_lower); ok {
-		h.filed_lines[name_lower] = strings.Join([]string{h.filed_lines[name_lower], value}, ", ")
+		h.headers[name_lower] = strings.Join([]string{h.headers[name_lower], value}, ", ")
 		return
 	}
 
-	h.filed_lines[name_lower] = value
+	h.headers[name_lower] = value
 }
 
 // Getter for header values
 func (h *Headers) Get(name string) (string, bool) {
-	val, ok := h.filed_lines[strings.ToLower(name)]
+	val, ok := h.headers[strings.ToLower(name)]
 	return val, ok
 
 }
 
 // Formats headers to comma separated list
 func (h *Headers) String() string {
-	headers := make([]string, len(h.filed_lines))
+	headers := make([]string, len(h.headers))
 
-	for k, v := range h.filed_lines {
+	for k, v := range h.headers {
 		headers = append(headers, fmt.Sprintf("%s: %s", k, v))
 	}
 
@@ -76,7 +76,7 @@ func (h *Headers) String() string {
 
 // Parses Field Line
 func (h *Headers) Parse(data []byte) (int, error) {
-	h.filed_lines = make(map[string]string)
+	h.headers = make(map[string]string)
 	bytes_read := 0
 
 	for {
@@ -115,6 +115,12 @@ func (h *Headers) Parse(data []byte) (int, error) {
 	}
 
 	return bytes_read, nil
+}
+
+func NewHeaders() *Headers {
+	return &Headers{
+		headers: make(map[string]string),
+	}
 }
 
 func isToken(data []byte) bool {
