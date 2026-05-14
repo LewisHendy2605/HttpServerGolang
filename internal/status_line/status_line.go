@@ -1,11 +1,17 @@
 package status_line
 
 import (
-	"bytes"
 	"fmt"
 
-	"github.com/LewisHendy2605/HttpServerGolang/internal/syntax_notation"
 	"github.com/LewisHendy2605/HttpServerGolang/internal/version"
+)
+
+var (
+	StatusOK = StatusLine{
+		HttpVersion: version.HTTP11,
+		StatusCode:  200,
+		Reason:      "OK",
+	}
 )
 
 /*
@@ -46,17 +52,22 @@ or discarded when the message is forwarded via other versions of HTTP).
 A server MUST send the space that separates the status-code from the reason-phrase even when the reason-phrase is absent (i.e., the status-line would end with the space).
 */
 type StatusLine struct {
-	HttpVersion  *version.HttpVersion
-	StatusCode   string
-	ReasonPhrase string
+	HttpVersion version.HttpVersion
+	StatusCode  uint16
+	Reason      string
+}
+
+func NewStatusLine() StatusLine {
+	return StatusLine{HttpVersion: version.HTTP11}
 }
 
 // Formats Request Line to string for debugging
 func (sl *StatusLine) String() string {
-	return fmt.Sprintf("%s %s %s", sl.HttpVersion.String(), sl.StatusCode, sl.ReasonPhrase)
+	return fmt.Sprintf("%s %d %s", sl.HttpVersion.String(), sl.StatusCode, sl.Reason)
 }
 
 // Parses http request line
+/*
 func (sl *StatusLine) Parse(data []byte) (int, error) {
 	index := bytes.Index(data, []byte(syntax_notation.CRLF))
 	if index == -1 {
@@ -76,9 +87,15 @@ func (sl *StatusLine) Parse(data []byte) (int, error) {
 		return 0, err
 	}
 
-	sl.StatusCode = string(parts[0])
+	code, err := strconv.ParseUint(string(parts[0]), 10, 16)
+	if err != nil {
+		return 0, err
+	}
+
+	sl.StatusCode = uint16(code)
 
 	sl.ReasonPhrase = string(parts[1])
 
 	return index + len(syntax_notation.CRLF), nil
 }
+*/
