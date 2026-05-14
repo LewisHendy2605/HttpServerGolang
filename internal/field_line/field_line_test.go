@@ -8,17 +8,19 @@ import (
 )
 
 func TestParseFieldLine(t *testing.T) {
-	// Valid Field Line
+	// Test single header
 	h := Headers{}
 	index, err := h.Parse([]byte("Host: example.com" + syntax_notation.CRLF))
 	require.NoError(t, err)
 	require.Equal(t, 19, index)
+	require.Equal(t, 1, h.Len())
+	require.Equal(t, "host: example.com\r\n", h.String())
 
 	val, ok := h.Get("HOST")
 	require.True(t, ok)
 	require.Equal(t, "example.com", val)
 
-	// Valid Field Line
+	// Test dashed header name
 	h = Headers{}
 	index, err = h.Parse([]byte("Content-Type: application/json" + syntax_notation.CRLF))
 	require.NoError(t, err)
@@ -28,15 +30,32 @@ func TestParseFieldLine(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "application/json", val)
 
-	// Valid Field Line
+	// Test repeated headers
 	h = Headers{}
 	index, err = h.Parse([]byte("Host: foo, bar\r\nHost: baz\r\n"))
 	require.NoError(t, err)
 	require.Equal(t, 27, index)
+	require.Equal(t, 1, h.Len())
 
 	val, ok = h.Get("host")
 	require.True(t, ok)
 	require.Equal(t, "foo, bar, baz", val)
+
+	// Test two different headers
+	h = Headers{}
+	index, err = h.Parse([]byte("Content-Type: application/json\r\nHost: example.com\r\n"))
+	require.NoError(t, err)
+	require.Equal(t, 51, index)
+	require.Equal(t, 2, h.Len())
+	require.Equal(t, "content-type: application/json\r\nhost: example.com\r\n", h.String())
+
+	val, ok = h.Get("host")
+	require.True(t, ok)
+	require.Equal(t, "example.com", val)
+
+	val, ok = h.Get("content-type")
+	require.True(t, ok)
+	require.Equal(t, "application/json", val)
 
 	// Missing colon
 	h = Headers{}

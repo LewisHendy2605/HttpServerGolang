@@ -65,13 +65,18 @@ func (h *Headers) Get(name string) (string, bool) {
 
 // Formats headers to comma separated list
 func (h *Headers) String() string {
-	headers := make([]string, len(h.headers))
+	headers := make([]string, 0, len(h.headers))
 
 	for k, v := range h.headers {
-		headers = append(headers, fmt.Sprintf("%s: %s", k, v))
+		headers = append(headers, fmt.Sprintf("%s: %s\r\n", k, v))
 	}
 
-	return strings.Join(headers, ", ")
+	return strings.Join(headers, "")
+}
+
+// Return the amount of headers
+func (h *Headers) Len() int {
+	return len(h.headers)
 }
 
 // Parses Field Line
