@@ -8,6 +8,11 @@ import (
 	"github.com/LewisHendy2605/HttpServerGolang/internal/syntax_notation"
 )
 
+var HTTP11 = HttpVersion{
+	Major: 1,
+	Minor: 1,
+}
+
 /*
 2.3. HTTP Version
 
