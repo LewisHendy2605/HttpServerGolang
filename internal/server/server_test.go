@@ -24,5 +24,5 @@ func TestServer(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	require.Equal(t, "HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n", string(buf[:n]))
+	require.Equal(t, "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", string(buf[:n]))
 }

@@ -1,4 +1,4 @@
-package method
+package request
 
 /*
 3.1. Method

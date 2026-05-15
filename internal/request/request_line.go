@@ -1,11 +1,10 @@
-package request_line
+package request
 
 import (
 	"bytes"
 	"fmt"
 	"strings"
 
-	"github.com/LewisHendy2605/HttpServerGolang/internal/method"
 	"github.com/LewisHendy2605/HttpServerGolang/internal/syntax_notation"
 	"github.com/LewisHendy2605/HttpServerGolang/internal/version"
 )
@@ -45,7 +44,7 @@ func (rl *RequestLine) Parse(data []byte) (int, error) {
 	}
 
 	rl.Method = strings.ToUpper(string(parts[0]))
-	if !method.IsMethod(rl.Method) {
+	if !IsMethod(rl.Method) {
 		return 0, fmt.Errorf("invalid request line, invalid http method")
 	}
 

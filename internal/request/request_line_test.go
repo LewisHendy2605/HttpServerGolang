@@ -1,9 +1,8 @@
-package request_line
+package request
 
 import (
 	"testing"
 
-	"github.com/LewisHendy2605/HttpServerGolang/internal/method"
 	"github.com/LewisHendy2605/HttpServerGolang/internal/syntax_notation"
 	"github.com/stretchr/testify/require"
 )
@@ -14,7 +13,7 @@ func TestParseRequestLine(t *testing.T) {
 	index, err := rl.Parse([]byte("GET http://www.w3.org/pub/WWW/TheProject.html HTTP/1.1" + syntax_notation.CRLF))
 	require.NoError(t, err)
 	require.Equal(t, 56, index)
-	require.Equal(t, method.Get, rl.Method)
+	require.Equal(t, Get, rl.Method)
 	require.Equal(t, "http://www.w3.org/pub/WWW/TheProject.html", rl.RequestTarget)
 	require.Equal(t, 1, rl.HttpVersion.Major)
 	require.Equal(t, 1, rl.HttpVersion.Minor)
@@ -23,7 +22,7 @@ func TestParseRequestLine(t *testing.T) {
 	rl = &RequestLine{}
 	_, err = rl.Parse([]byte("GET https:/example.com HTTP/1.1" + syntax_notation.CRLF))
 	require.NoError(t, err)
-	require.Equal(t, method.Get, rl.Method)
+	require.Equal(t, Get, rl.Method)
 	require.Equal(t, "https:/example.com", rl.RequestTarget)
 	require.Equal(t, 1, rl.HttpVersion.Major)
 	require.Equal(t, 1, rl.HttpVersion.Minor)

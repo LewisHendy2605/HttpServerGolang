@@ -1,4 +1,4 @@
-package status_line
+package response
 
 import (
 	"testing"

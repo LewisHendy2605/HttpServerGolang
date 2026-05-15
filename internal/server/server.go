@@ -40,6 +40,7 @@ func (s *Server) runServer(listener net.Listener) {
 // Handles a new tcp connection
 func (s *Server) handle(conn io.ReadWriteCloser) {
 	res := response.NewResponse()
+	res.Headers.Set("Connection", "close")
 	res.Headers.Set("Content-Length", "0")
 	res.Ok()
 

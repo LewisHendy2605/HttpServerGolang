@@ -1,4 +1,4 @@
-package field_line
+package headers
 
 import (
 	"testing"

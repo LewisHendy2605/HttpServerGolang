@@ -6,15 +6,14 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/LewisHendy2605/HttpServerGolang/internal/field_line"
-	"github.com/LewisHendy2605/HttpServerGolang/internal/request_line"
+	"github.com/LewisHendy2605/HttpServerGolang/internal/headers"
 )
 
 type ParserState string
 
 const (
 	StateInit        ParserState = "init"
-	StateFieldLine   ParserState = "field_line"
+	StateFieldLine   ParserState = "headers"
 	StateMessageBody ParserState = "message_body"
 	StateDone        ParserState = "done"
 )
@@ -49,8 +48,8 @@ HTTP makes use of some protocol elements similar to the Multipurpose Internet Ma
 */
 
 type Request struct {
-	RequestLine *request_line.RequestLine
-	Headers     *field_line.Headers
+	RequestLine *RequestLine
+	Headers     *headers.Headers
 	Body        []byte
 	state       ParserState
 }
@@ -79,7 +78,7 @@ outerLoop:
 		current_data := data[bytes_read:]
 		switch r.state {
 		case StateInit:
-			r.RequestLine = &request_line.RequestLine{}
+			r.RequestLine = &RequestLine{}
 			read, err := r.RequestLine.Parse(current_data)
 			if err != nil {
 				return err
@@ -88,7 +87,7 @@ outerLoop:
 			bytes_read += read
 			r.state = StateFieldLine
 		case StateFieldLine:
-			r.Headers = &field_line.Headers{}
+			r.Headers = &headers.Headers{}
 			read, err := r.Headers.Parse(current_data)
 			if err != nil {
 				return err

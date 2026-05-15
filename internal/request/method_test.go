@@ -1,4 +1,4 @@
-package method
+package request
 
 import (
 	"testing"
