@@ -68,10 +68,10 @@ func (h *Headers) String() string {
 	headers := make([]string, 0, len(h.headers))
 
 	for k, v := range h.headers {
-		headers = append(headers, fmt.Sprintf("%s: %s\r\n", k, v))
+		headers = append(headers, fmt.Sprintf("%s: %s", k, v))
 	}
 
-	return strings.Join(headers, "")
+	return strings.Join(headers, "\r\n")
 }
 
 // Return the amount of headers

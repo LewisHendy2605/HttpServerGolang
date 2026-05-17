@@ -6,14 +6,6 @@ import (
 	"github.com/LewisHendy2605/HttpServerGolang/internal/version"
 )
 
-var (
-	StatusOK = StatusLine{
-		HttpVersion: version.HTTP11,
-		StatusCode:  200,
-		Reason:      "OK",
-	}
-)
-
 /*
 4. Status Line
 

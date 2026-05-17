@@ -1,28 +1,25 @@
 package server
 
 import (
+	"io"
 	"net"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestServer(t *testing.T) {
 	client, conn := net.Pipe()
 	defer client.Close()
-	defer conn.Close()
 
 	go func() {
 		server := &Server{}
 		server.handle(conn)
 	}()
 
-	buf := make([]byte, 4096)
+	buf, err := io.ReadAll(client)
+	require.NoError(t, err)
 
-	n, err := client.Read(buf)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	require.Equal(t, "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\n\r\n", string(buf[:n]))
+	assert.Equal(t, "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\ncontent-type: text/plain\r\n\r\n", string(buf))
 }

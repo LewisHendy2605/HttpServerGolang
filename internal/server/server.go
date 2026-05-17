@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 
 	"github.com/LewisHendy2605/HttpServerGolang/internal/response"
@@ -42,9 +43,26 @@ func (s *Server) handle(conn io.ReadWriteCloser) {
 	res := response.NewResponse()
 	res.Headers.Set("Connection", "close")
 	res.Headers.Set("Content-Length", "0")
-	res.Ok()
+	res.Headers.Set("Content-Type", "text/plain")
 
-	conn.Write(res.Byte())
+	err := res.WriteStatusLine(conn, 200)
+	if err != nil {
+		slog.Error("writing status line", "error", err)
+		panic(err)
+	}
+
+	err = res.WriteHeaders(conn)
+	if err != nil {
+		slog.Error("writing headers", "error", err)
+		panic(err)
+	}
+
+	err = conn.Close()
+	if err != nil {
+		slog.Error("closing connection", "error", err)
+		panic(err)
+	}
+
 }
 
 // Closes server connection, and stops handling connection
