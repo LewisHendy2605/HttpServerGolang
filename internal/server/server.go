@@ -55,7 +55,7 @@ func (s *Server) handle(conn io.ReadWriteCloser) {
 		panic(err)
 	}
 
-	handlerErr := s.handler(conn, req)
+	handlerErr := s.handler(res, req)
 	if handlerErr != nil {
 		slog.Error("handling request", "error", err)
 		panic(handlerErr)

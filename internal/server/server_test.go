@@ -1,12 +1,14 @@
 package server
 
 import (
+	"fmt"
 	"io"
-	"log/slog"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/LewisHendy2605/HttpServerGolang/internal/request"
+	"github.com/LewisHendy2605/HttpServerGolang/internal/response"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,8 +17,10 @@ func TestServer(t *testing.T) {
 	client, conn := net.Pipe()
 	defer client.Close()
 
-	var handler Handler = func(w io.Writer, req *request.Request) *HandlerError {
-		slog.Info("http handler")
+	timeString := time.Now().Format(time.RFC3339)
+
+	var handler Handler = func(res *response.Response, req *request.Request) *HandlerError {
+		res.Headers.Set("Date", timeString)
 
 		return nil
 	}
@@ -37,5 +41,7 @@ func TestServer(t *testing.T) {
 	buf, err := io.ReadAll(client)
 	require.NoError(t, err)
 
-	assert.Equal(t, "HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\ncontent-type: text/plain\r\n\r\n", string(buf))
+	t.Log(string(buf))
+
+	assert.Equal(t, fmt.Sprintf("HTTP/1.1 200 OK\r\nconnection: close\r\ncontent-length: 0\r\ncontent-type: text/plain\r\ndate: %s\r\n\r\n", timeString), string(buf))
 }
