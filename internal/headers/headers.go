@@ -3,6 +3,7 @@ package headers
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/LewisHendy2605/HttpServerGolang/internal/syntax_notation"
@@ -67,7 +68,16 @@ func (h *Headers) Get(name string) (string, bool) {
 func (h *Headers) String() string {
 	headers := make([]string, 0, len(h.headers))
 
-	for k, v := range h.headers {
+	// extract and sort keys
+	keys := make([]string, 0, len(h.headers))
+	for k := range h.headers {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	// build deterministic output
+	for _, k := range keys {
+		v := h.headers[k]
 		headers = append(headers, fmt.Sprintf("%s: %s", k, v))
 	}
 
